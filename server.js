@@ -1,5 +1,6 @@
 const express = require("express");
 const app = express();
+const secrets = require('./secrets');
 
 app.get ('/customers',(req, res)=>{
     res.send('Hello from customers')
