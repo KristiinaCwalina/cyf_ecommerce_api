@@ -2,6 +2,9 @@ const express = require("express");
 const app = express();
 const secrets = require('./secrets');
 
+const bodyParser = require('body-parser');
+app.use(bodyParser.json());
+
 app.get('/customers', (req, res)=> {
     pool.query('SELECT * FROM customers', (error, result) => {
         res.json(result.rows);
@@ -19,6 +22,28 @@ app.get ('/products',(req, res)=>{
         res.json(result.rows);
     })    
 });
+
+app.get ('/products',(req, res)=>{
+    pool.query('select suppliers.supplier_name, products.* from products join suppliers on suppliers.id=products.supplier_id' , (error, result) => {
+        res.json(result.rows);
+    })    
+});
+
+app.post('/customers',(req,res)=>{
+    const newCustomerName = req.body.name;
+    const newCustomerAddress = req.body.address;
+    const newCustomerCity=req.body.city;
+    const newCustomerCountry=req.body.country;
+
+    const query='INSERT INTO customers (name,address,city,country) VALUES ($1,$2,$3,$4)'
+    
+    const params=[newCustomerName,newCustomerAddress,newCustomerCity,newCustomerCountry];
+
+    pool.query(query,params)
+    .then(() => res.send('Customer Created!'))
+    .catch(e=>res.status(500).send(e))
+});
+
 
 const { Pool } = require('pg');
 
