@@ -121,9 +121,13 @@ app.get ('/products',(req, res)=>{
 /*Update the previous GET endpoint /products to filter the list of products 
 by name using a query parameter, for example /products?name=Cup. 
 This endpoint should still work even if you don't use the name query parameter! */
-app.get("/products/:productName", function(req, res) {
-    const productName = req.params.productName;
-    pool.query("SELECT * FROM products WHERE product_name=$1", [productName])
+app.get("/products", function(req, res) {
+    const productName = req.query.name;
+    let query = 'select suppliers.supplier_name, products.* from products join suppliers on suppliers.id=products.supplier_id';
+    if(productName){
+query= query + `where products.product_name ilike '%${ProductName}%'`
+    }
+    pool.query(query)
         .then(result => res.json(result.rows))
         .catch(e => console.error(e));
 });
@@ -139,9 +143,9 @@ app.post("/products", function(req, res) {
     if(!Number.isInteger(ProductPrice) || ProductPrice <= 0) {
         return res.status(400).send("The price should be a positive integer.");
     }
-    pool.query("SELECT * FROM products WHERE supplier_id=$1", [SupplierId])
-        .then(() => {
-            if(!SupplierId) {
+    pool.query("SELECT * FROM suppliers WHERE supplier_id=$1", [SupplierId])
+        .then(result => {
+            if(result.rows.length<0) {
                 return res.status(400).send('There is no supplier with that id!');
             } else {
                 const query = "INSERT INTO products (product_name, unit_price,supplier_id) VALUES ($1, $2, $3)";
