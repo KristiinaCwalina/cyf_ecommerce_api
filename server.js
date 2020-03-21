@@ -58,16 +58,14 @@ app.post('/customers',(req,res)=>{
 /*Add a new POST endpoint /customers/:customerId/orders to create a new 
 order (including an order date, and an order reference) for a customer. 
 Check that the customerId corresponds to an existing customer or return an 
-error. 
-NOT WORKING WITH THE NONEXISTANT ID
-*/
+error.*/
 app.post("/customers/:customerId/orders", function(req, res) {
     const customerId=req.params.customerId;
     const orderDate = req.body.order_date;
     const orderReference = req.body.order_reference;
     pool.query("SELECT * FROM customers WHERE id=$1", [customerId])
-        .then(() => {
-            if(!customerId) {
+        .then(result => {
+            if(result.rows.length <= 0) {
                 return res.status(400).send('There is no customer with that ID!');
             } else {
                 const query = "INSERT INTO orders (order_date, order_reference,customer_id) VALUES ($1, $2,$3)";
@@ -134,8 +132,7 @@ query= query + `where products.product_name ilike '%${ProductName}%'`
 
 /*Add a new POST endpoint /products to create a new product (with a product 
 name, a price and a supplier id). Check that the price is a positive integer
-and that the supplier ID exists in the database, otherwise return an error.
-!!!POSTMAN DOES NOT WORK WITH SUPPLIER ID*/
+and that the supplier ID exists in the database, otherwise return an error.*/
 app.post("/products", function(req, res) {
     const ProductName = req.body.product_name;
     const ProductPrice = req.body.unit_price;
