@@ -15,6 +15,7 @@ const pool = new Pool({
 app.use(bodyParser.json());
 
 app.get("/products", (req, res) => {
+  console.log("products received");
   pool.query("SELECT * FROM products", (error, result) => {
     res.json(result.rows);
   });
@@ -22,6 +23,7 @@ app.get("/products", (req, res) => {
 
 app.get("/products/:productId", function (req, res) {
   const productId = req.params.productId;
+  console.log(`received the product id ${productId}`);
   pool
     .query("SELECT * FROM products WHERE id=$1", [productId])
     .then((result) => res.json(result.rows))
@@ -125,12 +127,13 @@ app.delete("/customers/:customerId", function (req, res) {
     .catch((e) => console.error(e));
 });
 
-app.get("/products", function (req, res) {
+app.get("/products2/", function (req, res) {
   const productName = req.query.name;
-  let query = "select products.* from products";
+  let query = "select * from products ";
   if (productName) {
-    query = query + `where products.product_name ilike '%${ProductName}%'`;
+    query = query + `where products.product_name ilike '%${productName}%'`;
   }
+  console.log(query);
   pool
     .query(query)
     .then((result) => res.json(result.rows))
@@ -139,6 +142,7 @@ app.get("/products", function (req, res) {
 
 app.post("/products", function (req, res) {
   const ProductName = req.body.product_name;
+
   const ProductPrice = req.body.unit_price;
 
   if (!Number.isInteger(ProductPrice) || ProductPrice <= 0) {
