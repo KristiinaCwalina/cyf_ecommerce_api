@@ -3,6 +3,7 @@ const app = express();
 const secrets = require("./secrets");
 const bodyParser = require("body-parser");
 const { Pool } = require("pg");
+const session = require("express-session");
 
 const pool = new Pool({
   user: "postgres",
@@ -13,6 +14,14 @@ const pool = new Pool({
 });
 
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(
+  session({
+    secret: "secret",
+    resave: true,
+    saveUninitialized: true,
+  })
+);
 
 app.get("/products", (req, res) => {
   console.log("products received");
@@ -21,11 +30,30 @@ app.get("/products", (req, res) => {
   });
 });
 
-app.get("/products/:productId", function (req, res) {
-  const productId = req.params.productId;
+app.get("/products/:id", function (req, res) {
+  const productId = req.params.id;
+  //const product = data.products.find(x=>x.id ===productId);
+  //if(product)
+  //res.send(product);
+  //else
+  //res.status(404).send({msg: "No such product"})
   console.log(`received the product id ${productId}`);
+
   pool
     .query("SELECT * FROM products WHERE id=$1", [productId])
+    .then((result) => res.json(result.rows))
+    .catch((e) => console.error(e));
+});
+
+app.get("/products2/", function (req, res) {
+  const productName = req.query.name;
+  let query = "select * from products ";
+  if (productName) {
+    query = query + `where products.product_name ilike '%${productName}%'`;
+  }
+  console.log(query);
+  pool
+    .query(query)
     .then((result) => res.json(result.rows))
     .catch((e) => console.error(e));
 });
@@ -35,9 +63,23 @@ app.get("/orders", (req, res) => {
     res.json(result.rows);
   });
 });
+/*
+app.get("/cart/:id?", (req, res) => {
+  const productId = req.params.productId;
+  pool
+    .query("SELECT * FROM products WHERE id=$1", [productId])
+    .then((result) => res.json(result.rows))
+    .catch((e) => console.error(e));
+});
+*/
 
 app.get("/customers", (req, res) => {
   pool.query("SELECT * FROM customers", (error, result) => {
+    res.json(result.rows);
+  });
+});
+app.get("/users", (req, res) => {
+  pool.query("SELECT * FROM users", (error, result) => {
     res.json(result.rows);
   });
 });
@@ -60,11 +102,87 @@ app.get("/customers/:customerId/orders", (req, res) => {
     .catch((e) => console.error(e));
 });
 
+app.post("/products", function (req, res) {
+  const ProductName = req.body.product_name;
+
+  const ProductPrice = req.body.unit_price;
+
+  if (!Number.isInteger(ProductPrice) || ProductPrice <= 0) {
+    return res.status(400).send("The price should be a positive integer.");
+  } else {
+    const query =
+      "INSERT INTO products (product_name, unit_price) VALUES ($1, $2)";
+    pool
+      .query(query, [ProductName, ProductPrice])
+      .then(() => res.send("Product added!"))
+      .catch((e) => console.error(e));
+  }
+});
+//create user
+app.post("/users", (req, res) => {
+  let name = req.body.username;
+  let email = req.body.email;
+  let password = req.body.password;
+
+  if (name && password && email) {
+    pool.query(
+      "INSERT INTO users (username, email, password) VALUES ($1, $2, $3)",
+      [name, email, password]
+    );
+    res.status(201).send("User created and saved to database.");
+  } else {
+    res.status(400).send("Review your requests body.");
+  }
+});
+
+app.post("/auth", (req, res) => {
+  let email = req.body.email;
+  let password = req.body.password;
+
+  let parameters = [email, password];
+  if (email && password) {
+    pool.query(
+      "SELECT * FROM users WHERE email = $1 AND password = $2",
+      parameters,
+      (error, results, fields) => {
+        if (results.rowCount > 0) {
+          var userName = results.rows[0].name;
+          req.session.loggedin = true;
+          req.session.username = userName;
+          res.redirect("/");
+        } else {
+          res.send("Incorrect Username and/or Password!");
+        }
+        res.end();
+      }
+    );
+  } else {
+    res.send("Please enter Username and Password!");
+    res.end();
+  }
+});
+
+app.get("/", (req, res) => {
+  if (req.session.loggedin) {
+    res.send("Welcome back, " + req.session.username + "!");
+  } else {
+    res.send("Please login to view this page!");
+  }
+  res.end();
+});
+
+app.post("/logout", (req, res) => {
+  req.session.loggedin = false;
+  res.send("You are successfully logged out.")
+});
+
 app.post("/customers", (req, res) => {
   const newCustomerName = req.body.name;
   const newCustomerAddress = req.body.address;
   const newCustomerCity = req.body.city;
   const newCustomerCountry = req.body.country;
+  
+  
   const query =
     "INSERT INTO customers (name,address,city,country) VALUES ($1,$2,$3,$4)";
   const params = [
@@ -72,6 +190,8 @@ app.post("/customers", (req, res) => {
     newCustomerAddress,
     newCustomerCity,
     newCustomerCountry,
+   
+   
   ];
   pool
     .query(query, params)
@@ -125,36 +245,6 @@ app.delete("/customers/:customerId", function (req, res) {
         .catch((e) => console.error(e));
     })
     .catch((e) => console.error(e));
-});
-
-app.get("/products2/", function (req, res) {
-  const productName = req.query.name;
-  let query = "select * from products ";
-  if (productName) {
-    query = query + `where products.product_name ilike '%${productName}%'`;
-  }
-  console.log(query);
-  pool
-    .query(query)
-    .then((result) => res.json(result.rows))
-    .catch((e) => console.error(e));
-});
-
-app.post("/products", function (req, res) {
-  const ProductName = req.body.product_name;
-
-  const ProductPrice = req.body.unit_price;
-
-  if (!Number.isInteger(ProductPrice) || ProductPrice <= 0) {
-    return res.status(400).send("The price should be a positive integer.");
-  } else {
-    const query =
-      "INSERT INTO products (product_name, unit_price) VALUES ($1, $2)";
-    pool
-      .query(query, [ProductName, ProductPrice])
-      .then(() => res.send("Product added!"))
-      .catch((e) => console.error(e));
-  }
 });
 
 app.delete("/orders/:orderId", function (req, res) {
