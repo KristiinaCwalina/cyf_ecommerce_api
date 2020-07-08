@@ -142,7 +142,7 @@ app.post("/signin", (request, response) => {
   let parameters = [username, password];
   if (username && password) {
     pool.query(
-      "SELECT * FROM mentors WHERE email = $1 AND password = $2",
+      "SELECT * FROM users WHERE email = $1 AND password = $2",
       parameters,
       (error, results, fields) => {
         if (results.rowCount > 0) {
