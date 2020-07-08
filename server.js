@@ -135,31 +135,36 @@ app.post("/users", (req, res) => {
   }
 });
 
-app.post("/auth", (req, res) => {
-  let email = req.body.email;
-  let password = req.body.password;
+app.post("/signin", (request, response) => {
+  let username = request.body.username;
+  let password = request.body.password;
 
-  let parameters = [email, password];
-  if (email && password) {
+  let parameters = [username, password];
+  if (username && password) {
     pool.query(
-      "SELECT * FROM users WHERE email = $1 AND password = $2",
+      "SELECT * FROM mentors WHERE email = $1 AND password = $2",
       parameters,
       (error, results, fields) => {
         if (results.rowCount > 0) {
-          var userName = results.rows[0].name;
-          req.session.loggedin = true;
-          req.session.username = userName;
-          res.redirect("/");
+          let userName = results.rows[0].username;
+          request.session.loggedin = true;
+          request.session.username = userName;
+          response.send("Successfully logged in");
         } else {
-          res.send("Incorrect Username and/or Password!");
+          response.send("Incorrect Username and/or Password!");
         }
-        res.end();
+        response.end();
       }
     );
   } else {
-    res.send("Please enter Username and Password!");
-    res.end();
+    response.send("Please enter Username and Password!");
+    response.end();
   }
+});
+
+app.post("/logout", (request, response) => {
+  request.session.loggedin = false;
+  response.send("You are successfully logged out.")
 });
 
 app.get("/", (req, res) => {
@@ -173,7 +178,7 @@ app.get("/", (req, res) => {
 
 app.post("/logout", (req, res) => {
   req.session.loggedin = false;
-  res.send("You are successfully logged out.")
+  res.send("You are successfully logged out.");
 });
 
 app.post("/customers", (req, res) => {
@@ -181,8 +186,7 @@ app.post("/customers", (req, res) => {
   const newCustomerAddress = req.body.address;
   const newCustomerCity = req.body.city;
   const newCustomerCountry = req.body.country;
-  
-  
+
   const query =
     "INSERT INTO customers (name,address,city,country) VALUES ($1,$2,$3,$4)";
   const params = [
@@ -190,8 +194,6 @@ app.post("/customers", (req, res) => {
     newCustomerAddress,
     newCustomerCity,
     newCustomerCountry,
-   
-   
   ];
   pool
     .query(query, params)
